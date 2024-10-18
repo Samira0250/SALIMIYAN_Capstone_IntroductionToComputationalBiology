@@ -62,7 +62,7 @@ This code filters each species' file and calculates the percentage of records wi
 | molossinus | 97.00%           |
 | spretus    | 99.00%           |
 ```
-## How to Cite
+## Friendly reminder
 
 If you use this script in your research, please cite it as:
 "SALIMIYAN_Capstone, GitHub Repository."
