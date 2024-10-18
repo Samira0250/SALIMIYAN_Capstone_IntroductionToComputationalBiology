@@ -1,0 +1,6 @@
+Species name	Percent filtered
+castaneus	99.00
+domesticus	99.00
+musculus	99.00
+molossinus	97.00
+spretus	99.00
