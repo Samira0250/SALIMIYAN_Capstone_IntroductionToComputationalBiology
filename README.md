@@ -31,6 +31,17 @@ Step 3: Once your input file list is ready, run the script by using Species_list
 
 **Example Codes**
 ```bash
+# Check if the input file (species list) is provided
+if [ -z "$1" ]; then
+    echo "Error: No input file provided. Please provide a species list file (e.g., Spe$
+    exit 1
+fi
+
+# Check if the input file exists
+if [ ! -f $1 ]; then
+    echo "Error: File '$1' not found. Please provide a valid species list file."
+    exit 1
+fi
 # Filter the file by removing the header and selecting records with latitude/longitude
 grep -E '[0-9]+\.[0-9]+' "$file" | tail -n +2 > "${species}_lat_long.txt"
 
@@ -39,6 +50,9 @@ total_records=$(wc -l "$file" | awk '{print $1}')
 locality_records=$(wc -l "${species}_lat_long.txt" | awk '{print $1}')
 percent_filtered=$(echo "scale=2; ($locality_records / $total_records) * 100" | bc)
 This code filters each species' file and calculates the percentage of records with valid latitude and longitude data.
+
+# Remove the temporary lat_long file after being used IN THE LOOP! Otherwise, this file will grow each time you run the program!
+ rm "${species}_lat_long.txt"
 
 | Species    | Percent Filtered |
 |------------|------------------|
