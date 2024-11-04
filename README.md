@@ -53,6 +53,7 @@ This code filters each species' file and calculates the percentage of records wi
 
 # Remove the temporary lat_long file after being used IN THE LOOP! Otherwise, this file will grow each time you run the program!
  rm "${species}_lat_long.txt"
+```
 
 | Species    | Percent Filtered |
 |------------|------------------|
