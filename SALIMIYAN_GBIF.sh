@@ -1,79 +1,140 @@
 #!/bin/bash
 
-#This script is only exacutable for one of the species from CP1, domesticus AKA DOM!
 
-#Download the zip from Canvas, name is: GB_data.zip.
-#Unzip this file by double clicking and then make a list file following the command below:
+    # Moving into speices directory
+    cd $species
 
-#ls *.csv > Species_list.txt
-#This file will be considered as the 'input file' for the rest of the project!
+    # Putting the correct dataset in the correct subdirectory
+    cp ../${files[$i]} .
+
+    # Copying header into new file, removing the header, checking to make sure it worked
+    head -1 ${files[$i]} > ${species}_header.txt
+    tail -n+2 ${files[$i]} >${species}.txt
+
+    tot=`wc -l ${species}.txt | awk '{print $1}'`
+    echo "Total: $tot"
+
+    # Sorting the file by latitude, using a one-liner
+    sort -k22 ${species}.txt | uniq > ${species}_lat_uniq.txt
+
+    # Sorting the previous file by longitude, using a one-liner
+    sort -k23 ${species}_lat_uniq.txt |uniq > ${species}_lat_long_uniq.txt
+
+    # Getting columns (fields) 17 and 18, which should be lat and long using a tab as the field-separator (\t)
+    awk 'FS="\t" {print $22, $23}' ${species}_lat_long_uniq.txt >${species}_lat_long.txt
+
+    # Grabbing only records that DO NOT (-v) begin (^)with a space (\s), repeated zero or more times (*), until the end of the line ($) [A blank line!]
+    grep -v "^\s*$" ${species}_lat_long.txt > ${species}_lat_long_cleaned.txt
+
+    # Counting number of lines in original and filtered files
+    filt=`wc -l ${species}_lat_long_cleaned.txt | awk '{print $1}'`
+    echo Filtered: $filt
+
+    # Using BC calculator (use man bc for syntax and options) to determine percent duplicated records
+    peruni=`echo "scale=4; ($filt/$tot)* 100"| bc`
+
+    echo "Percent with locality records: $peruni %"
+
+    echo "$species\t$peruni" >>../Filtered.txt
+
+    #remove intermediate files
+    rm ${files[$i]} ${species}_header.txt ${species}.txt ${species}_lat_uniq.txt ${species}_lat_long_uniq.txt ${species}_lat_long.txt
+
+    #move back into the home directory
+    cd ../
+
+done
+#loop ends here
+# Moving to the main directory to make concatenated lat,long files
+cat ./*/*_lat_long_cleaned.txt > Lat_Long_combined.txt
 
 
-# Check if the input file (species list) is provided
-if [ -z "$1" ]; then
-    echo "Error: No input file provided. Please provide a species list file (e.g., Species_list.txt)."
-    exit 1
-fi
+# Script to refine and analyze museum dataset records with specified requirements
 
-# Check if the input file exists
-if [ ! -f $1 ]; then
-    echo "Error: File '$1' not found. Please provide a valid species list file."
-    exit 1
-fi
+# Define paths and constants
+SPECIES_LIST=("0018126-240906103802322.csv" "0018129-240906103802322.csv" "0018130-240906103802322.csv" "0018131-240906103802322.csv" "0021864-240906103802322.csv")
+MUSEUMS=("AMNH" "FMNH" "iNaturalist" "KU" "MVZ" "NHMUK" "NMR" "SMF" "USNM" "YPM")
+SPECIMEN_TYPES=("PRESERVED_SPECIMEN" "HUMAN_OBSERVATION" "OCCURRENCE" "MATERIAL_SAMPLE")
 
-# Count the number of species in the input file (number of lines)
-Species_count=$(wc -l < "$1")
+# Refine the Script for Efficiency
+for file in "${SPECIES_LIST[@]}"; do
+    # Check if file exists and is not empty
+    if [[ -s "$file" ]]; then
+        echo "Processing file: $file"
 
-# Print out the species count for verification
-echo "Number of  in the input file: $Species_count"
+        # Set output file name with species name added to each line
+        species_name=""
+        case $file in
+            "0018126-240906103802322.csv") species_name="Mus musculus castaneus";;
+            "0018129-240906103802322.csv") species_name="Mus musculus domesticus";;
+            "0018130-240906103802322.csv") species_name="Mus musculus OR Mus musculus musculus";;
+            "0018131-240906103802322.csv") species_name="Mus musculus molossinus";;
+            "0021864-240906103802322.csv") species_name="Mus spretus spp.";;
+        esac
 
-#Create an empty file called 'Filtered.txt' and add a header
-echo -e "Species name\tPercent filtered" > Filtered.txt
-
-# Read each line of the input file into an array
-species_files=($(cat "$1"))
-
-# Print the contents of the array to verify
-echo "Species files read from input file:"
-
-for file in "${species_files[@]}"; do
-    echo "$file"
+        # Filter for species and add species column in the output
+        awk -F'\t' -v species="$species_name" '{if($10 ~ /Mus/) print $22, $23, species}' "$file" > filtered_$file
+    else
+        echo "Warning: $file does not exist or is empty."
+    fi
 done
 
-# Combine all filtered records file should start empty
-> Lat_Long_combined.txt 
+# Count records for each museum and store them in a table
+# Find the right column for institutional code, record column ,... using this: head -n 1 0018126-240906103802322.csv | awk -F'\t' '{for (i=1; i<=NF; i++) print i, $i}'
+echo -e "File\t${MUSEUMS[*]}" > museum_count.txt
+for file in "${SPECIES_LIST[@]}"; do
+    row="$file"
+    for museum in "${MUSEUMS[@]}"; do
+        count=$(awk -F'\t' -v museum="$museum" '$37 == museum {count++} END {print count+0}' "$file")
+        row="$row\t$count"
+    done
+    echo -e "$row" >> museum_count.txt
+done
 
-# Loop through the species files
-for file in "${species_files[@]}"; do
-
-# Check if the species is 'domesticus' in the file
-species=$(awk -F'\t' 'NR==2 {print $10, $11}' "$file" | awk '{print $NF}')
-#if [[ "$species" == *"domesticus"* ]]; then
-   echo "Processing species: $species from file $file"
-
-# Filter the file by removing header and selecting records with latitude/longitude
-grep -E '[0-9]+\.[0-9]+' "$file" | tail -n +2 > "${species}_lat_long.txt"
-
-# Calculate percentage of records with locality info
-  total_records=$(($(wc -l "$file" | awk '{print $1}') - 1))
-  echo "$total_records"
-  locality_records=$(wc -l "${species}_lat_long.txt" | awk '{print $1}')
-  echo "$locality_records"
-  percent_filtered=$(echo "scale=2; ($locality_records / $total_records) * 100" | bc)
-  echo "$percent_filtered"
-
-# Append results to Filtered.txt
- echo -e "$species\t$percent_filtered" >> Filtered.txt
-
-# Combine all filtered records
- cat "${species}_lat_long.txt" >> Lat_Long_combined.txt
-
-# Remove the temporary lat_long file after being used
-        rm "${species}_lat_long.txt" 
- #  else
-# echo "Skipping file $file: species not 'domesticus'."
-# fi
-  
+# Count records for each specimen type and store them in a table
+echo -e "File\t${SPECIMEN_TYPES[*]}" > specimen_count.txt
+for file in "${SPECIES_LIST[@]}"; do
+    row="$file"
+    for specimen in "${SPECIMEN_TYPES[@]}"; do
+        count=$(awk -F'\t' -v specimen="$specimen" '$36 == specimen {count++} END {print count+0}' "$file")
+        row="$row\t$count"
     done
 
-exit
+    # Analyze citizen science records by year for Mus musculus musculus (from iNaturalist)
+
+OFS="\t"
+file="0018130-240906103802322.csv"
+output_file="citizen_count_per_year.txt"
+
+# Clear the output file to avoid appending multiple times
+echo -e "Year\tCount" > "$output_file"
+
+# Loop through each unique year found in the dataset
+for year in $(awk -F'\t' '$37 == "iNaturalist" {print $33}' "$file" | sort -u); do
+    # Count occurrences of each year for iNaturalist records
+    count=$(awk -F'\t' -v year="$year" '$37 == "iNaturalist" && $33 == year {count++} END {print count+0}' "$file")
+
+    # Output the year and count to the output file, separated by a tab
+    echo -e "$year$OFS$count" >> "$output_file"
+done
+
+# Confirmation message
+echo "Table of year counts for iNaturalist records saved to $output_file"
+
+# Check the contents of the output file
+cat citizen_count_per_year.txt
+
+# Filtered Museum Counts for Records with Latitude/Longitude
+echo -e "File\t${MUSEUMS[*]}" > museum_count_filtered.txt
+for file in "${SPECIES_LIST[@]}"; do
+    row="$file"
+    for museum in "${MUSEUMS[@]}"; do
+        count=$(awk -F'\t' -v museum="$museum" '($37 == museum && $22 && $23) {count++} END {print count+0}' "$file")
+        row="$row\t$count"
+    done
+    echo -e "$row" >> museum_count_filtered.txt
+done
+
+# Save the tables to files as specified
+cp museum_count.txt specimen_count.txt citizen_count_per_year.txt museum_count_filtered.txt ~/CP3/Output
+echo "Tables have been saved to the output directory."
