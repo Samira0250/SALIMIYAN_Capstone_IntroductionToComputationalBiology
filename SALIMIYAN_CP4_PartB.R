@@ -7,7 +7,7 @@ library(dplyr)
 library(tidyr)
 
 # Set the working directory
-setwd("C:/Users/szs0394/Downloads/CP4/ShellToR")
+setwd("")
 
 #Table for specimen_count
 # Define the file list and species names
@@ -254,3 +254,4 @@ write.table(citizen_count, "citizen_count_per_year.csv", sep = ",", row.names = 
 
 # Write Filtered Museum Count Table
 write.table(museum_count_filtered, "museum_count_filtered.csv", sep = ",", row.names = FALSE, quote = FALSE, col.names = TRUE)
+
