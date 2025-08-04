@@ -8,7 +8,7 @@ library(maps)
 library(readr)
 
 # Set working directory (adjust to your folder path)
-setwd("C:/Users/szs0394/Downloads/CP4/PartA")
+setwd("")
 
 # Read the dataset
 latlong_data <- read.table("Lat_Long_combined.txt", header = TRUE, sep = "\t")
@@ -87,3 +87,4 @@ title(main = "Distribution of Mus musculus Species", col.main = "blue", cex.main
 
 # Close the PNG file
 dev.off()
+
